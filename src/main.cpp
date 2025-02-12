@@ -8,6 +8,7 @@
 struct Voxel {
     Vector3 position;
     Color color;
+    BoundingBox boundingBox;
     bool isActive = false;  // Track whether voxel is used
 };
 
@@ -26,10 +27,18 @@ typedef struct App {
         DrawLine(this->windowWidth/2 - 5, this->windowHeight/2 - 5, this->windowWidth/2 + 5, this->windowHeight/2 + 5, BLACK );
         DrawLine(this->windowWidth/2 - 5, this->windowHeight/2 + 5, this->windowWidth/2 + 5, this->windowHeight/2 - 5, BLACK );
     }
-    static void DrawDebug() {
+
+    void DrawDebug() const {
         DrawBoundingBox(GetBackGridBoundingBox(), RED);
         DrawBoundingBox(GetBottomGridBoundingBox(), RED);
         DrawBoundingBox(GetLeftGridBoundingBox(), RED);
+
+        for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
+            if (!this->voxelGrid[i].isActive) {
+                continue;
+            }
+            DrawBoundingBox(this->voxelGrid[i].boundingBox, RED);
+        }
     }
 } App;
 
@@ -110,8 +119,9 @@ int main() {
 
                 // DRAW DEBUG INFO
                 if (app.debug) {
-                    App::DrawDebug();
+                    app.DrawDebug();
                 }
+
             EndMode3D();
             app.DrawCrosshair();
             DrawFPS(10,10);
@@ -121,8 +131,20 @@ int main() {
         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
             Voxel *selectedVoxel = GetVoxel(cameraRayCollision.point.x, cameraRayCollision.point.y, cameraRayCollision.point.z);
             if (selectedVoxel) {
-                selectedVoxel->color = RED;
+                selectedVoxel->color = BLUE;
                 selectedVoxel->position = cameraRayCollision.point;
+                selectedVoxel->boundingBox = BoundingBox {
+                    .min = {
+                        cameraRayCollision.point.x - CUBE_SIZE/2,
+                        cameraRayCollision.point.y - CUBE_SIZE/2,
+                        cameraRayCollision.point.z - CUBE_SIZE/2,
+                    },
+                    .max = {
+                        cameraRayCollision.point.x + CUBE_SIZE/2,
+                        cameraRayCollision.point.y + CUBE_SIZE/2,
+                        cameraRayCollision.point.z + CUBE_SIZE/2,
+                    },
+                };
                 selectedVoxel->isActive = true;
             }
         }

@@ -180,4 +180,6 @@ inline RayCollision CheckCollisionWithGrids(
     return cameraRayCollision;
 }
 
+
+
 #endif //GRID_H
