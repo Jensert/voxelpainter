@@ -20,9 +20,16 @@ typedef struct App {
 
     Voxel voxelGrid[(int)GRID_SIZE*(int)GRID_SIZE*(int)GRID_SIZE];
 
+    bool debug = true;
+
     void DrawCrosshair() const {
         DrawLine(this->windowWidth/2 - 5, this->windowHeight/2 - 5, this->windowWidth/2 + 5, this->windowHeight/2 + 5, BLACK );
         DrawLine(this->windowWidth/2 - 5, this->windowHeight/2 + 5, this->windowWidth/2 + 5, this->windowHeight/2 - 5, BLACK );
+    }
+    static void DrawDebug() {
+        DrawBoundingBox(GetBackGridBoundingBox(), RED);
+        DrawBoundingBox(GetBottomGridBoundingBox(), RED);
+        DrawBoundingBox(GetLeftGridBoundingBox(), RED);
     }
 } App;
 
@@ -60,12 +67,13 @@ int main() {
 
     const int cameraMode = CAMERA_FREE;
 
+    const BoundingBox bottomGridBoundingBox = GetBottomGridBoundingBox();
+    const BoundingBox leftGridBoundingBox = GetLeftGridBoundingBox();
+    const BoundingBox backGridBoundingBox = GetBackGridBoundingBox();
+
     SetTargetFPS(60);
     while (!WindowShouldClose())
     {
-        const BoundingBox bottomGridBoundingBox = GetBottomGridBoundingBox(GRID_SIZE, CUBE_SIZE);
-        const BoundingBox leftGridBoundingBox = GetLeftGridBoundingBox(GRID_SIZE, CUBE_SIZE);
-        const BoundingBox backGridBoundingBox = GetBackGridBoundingBox(GRID_SIZE, CUBE_SIZE);
 
         // Camera
         // ------
@@ -83,9 +91,9 @@ int main() {
             BeginMode3D(camera);
 
                 // DRAW THE GRID
-                DrawGridBottom(GRID_SIZE, CUBE_SIZE);
-                DrawGridLeft(GRID_SIZE, CUBE_SIZE);
-                DrawGridBack(GRID_SIZE, CUBE_SIZE);
+                DrawGridBottom();
+                DrawGridLeft();
+                DrawGridBack();
 
                 // DRAW ALL THE PLACED VOXELS
                 for (int i = 0; i < GRID_SIZE * GRID_SIZE * GRID_SIZE; i++) {
@@ -96,12 +104,14 @@ int main() {
                 }
 
                 // DRAW THE CURRENT VOXEL
-        DrawCube(
-            Vector3{
-            floorf(cameraRayCollision.point.x / CUBE_SIZE) * CUBE_SIZE + CUBE_SIZE / 2,
-            floorf(cameraRayCollision.point.y / CUBE_SIZE) * CUBE_SIZE + CUBE_SIZE / 2,
-            -floorf(abs(cameraRayCollision.point.z) / CUBE_SIZE) * CUBE_SIZE - CUBE_SIZE / 2},
-            CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, BLUE);
+                DrawCube(
+                    cameraRayCollision.point,
+                    CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, BLUE);
+
+                // DRAW DEBUG INFO
+                if (app.debug) {
+                    App::DrawDebug();
+                }
             EndMode3D();
             app.DrawCrosshair();
             DrawFPS(10,10);
@@ -112,18 +122,19 @@ int main() {
             Voxel *selectedVoxel = GetVoxel(cameraRayCollision.point.x, cameraRayCollision.point.y, cameraRayCollision.point.z);
             if (selectedVoxel) {
                 selectedVoxel->color = RED;
-                selectedVoxel->position = Vector3{
-                    floorf(cameraRayCollision.point.x / CUBE_SIZE) * CUBE_SIZE + CUBE_SIZE / 2,
-                    floorf(cameraRayCollision.point.y / CUBE_SIZE) * CUBE_SIZE + CUBE_SIZE / 2,
-                    -floorf(abs(cameraRayCollision.point.z) / CUBE_SIZE) * CUBE_SIZE - CUBE_SIZE / 2
-                };
+                selectedVoxel->position = cameraRayCollision.point;
                 selectedVoxel->isActive = true;
             }
         }
 
-
+        if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
+            std::cout << cameraRayCollision.point.x << " " << cameraRayCollision.point.y << " " << cameraRayCollision.point.z << std::endl;
+        }
         if (IsKeyPressed(KEY_F11)) {
             MaximizeWindow();
+        }
+        if (IsKeyPressed(KEY_F1)) {
+            app.debug = !app.debug;
         }
         if (IsWindowResized()) {
             app.windowWidth = GetScreenWidth();
