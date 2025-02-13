@@ -5,10 +5,20 @@
 #ifndef GRID_H
 #define GRID_H
 
+#include <cfloat>
+
 #include "rlgl.h"
 #include "raymath.h"
+
 constexpr float GRID_SIZE = 16.0f;
 constexpr float CUBE_SIZE = 0.1f;
+
+struct Voxel {
+    Vector3 position;
+    Color color;
+    BoundingBox boundingBox;
+    bool isActive = false;  // Track whether voxel is used
+};
 
 inline void DrawGridBottom()
 {
@@ -131,13 +141,12 @@ inline BoundingBox GetBackGridBoundingBox() {
 }
 
 // Function to check all grid collisions
-inline RayCollision CheckCollisionWithGrids(
-    const Ray &cameraRay,
-    const BoundingBox &bottomGridBoundingBox,
-    const BoundingBox &leftGridBoundingBox,
-    const BoundingBox &backGridBoundingBox)
+inline RayCollision CheckCollisionWithGrids(const Ray &cameraRay)
 {
     RayCollision cameraRayCollision;
+    const BoundingBox bottomGridBoundingBox = GetBottomGridBoundingBox();
+    const BoundingBox leftGridBoundingBox = GetLeftGridBoundingBox();
+    const BoundingBox backGridBoundingBox = GetBackGridBoundingBox();
 
     // Initialize to an empty collision (no collision)
     cameraRayCollision.hit = false;
@@ -180,6 +189,59 @@ inline RayCollision CheckCollisionWithGrids(
     return cameraRayCollision;
 }
 
+// Function to check all grid collisions
+inline RayCollision CheckCollisionWithVoxels(
+    const Ray &cameraRay,
+    const Voxel voxelGrid[])
+{
+    RayCollision closestCollision;
+    closestCollision.hit = false;
+    closestCollision.distance = FLT_MAX;
 
+    for (int i = 0; i < GRID_SIZE*GRID_SIZE*GRID_SIZE; i++) {
+        if (!voxelGrid[i].isActive) continue;
+        RayCollision collision = GetRayCollisionBox(cameraRay, voxelGrid[i].boundingBox);
+
+        if (collision.hit && collision.distance < closestCollision.distance) {
+            closestCollision = collision;
+        }
+    }
+    closestCollision.point = Vector3{
+        floorf(closestCollision.point.x / CUBE_SIZE) * CUBE_SIZE + CUBE_SIZE / 2,
+        floorf(closestCollision.point.y / CUBE_SIZE) * CUBE_SIZE + CUBE_SIZE / 2,
+        floorf(closestCollision.point.z / CUBE_SIZE) * CUBE_SIZE + CUBE_SIZE / 2};
+    return closestCollision;
+}
+
+inline RayCollision CheckAllCollisions(const Ray &cameraRay, const Voxel voxelGrid[]) {
+    RayCollision gridCollision = CheckCollisionWithGrids(cameraRay);
+    RayCollision voxelCollision = CheckCollisionWithVoxels(cameraRay, voxelGrid);
+    if (voxelCollision.hit) {
+        return voxelCollision;
+    }
+    return gridCollision;
+}
+
+inline void PrintActiveVoxelIndexes(Voxel voxelGrid[]) {
+    for (int i = 0; i < GRID_SIZE*GRID_SIZE*GRID_SIZE; i++) {
+        if (!voxelGrid[i].isActive) continue;
+        std::cout << i << std::endl;
+    }
+}
+
+inline BoundingBox returnRayCollisionBoundingBox(const RayCollision &rayCollision) {
+    return BoundingBox {
+        .min = {
+            rayCollision.point.x - CUBE_SIZE/2,
+            rayCollision.point.y - CUBE_SIZE/2,
+            rayCollision.point.z - CUBE_SIZE/2,
+        },
+        .max = {
+            rayCollision.point.x + CUBE_SIZE/2,
+            rayCollision.point.y + CUBE_SIZE/2,
+            rayCollision.point.z + CUBE_SIZE/2,
+        },
+    };
+}
 
 #endif //GRID_H

@@ -1,17 +1,10 @@
 #include <iostream>
+#include <sstream>
 #include <math.h>
 
 #include "raylib.h"
 #include "raymath.h"
 #include "grid.h"
-
-struct Voxel {
-    Vector3 position;
-    Color color;
-    BoundingBox boundingBox;
-    bool isActive = false;  // Track whether voxel is used
-};
-
 
 typedef struct App {
     static constexpr int renderWidth = 640;
@@ -64,7 +57,7 @@ Voxel *GetVoxel(float worldX, float worldY, float worldZ) {
 
 int main() {
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-    InitWindow(app.windowWidth, app.windowHeight, "3d game");
+    InitWindow(app.windowWidth, app.windowHeight, "Voxel painter");
     HideCursor();
 
     Camera camera = { 0 };
@@ -90,8 +83,7 @@ int main() {
         Ray cameraRay;
         cameraRay.position = camera.position;
         cameraRay.direction = cameraDirection;
-        const RayCollision cameraRayCollision = CheckCollisionWithGrids(cameraRay, bottomGridBoundingBox, leftGridBoundingBox, backGridBoundingBox);
-
+        const RayCollision cameraRayCollision = CheckAllCollisions(cameraRay, app.voxelGrid);
         UpdateCamera(&camera, cameraMode);
         SetMousePosition(app.windowWidth/2, app.windowHeight/2);
 
@@ -116,6 +108,7 @@ int main() {
                 DrawCube(
                     cameraRayCollision.point,
                     CUBE_SIZE, CUBE_SIZE, CUBE_SIZE, BLUE);
+                DrawBoundingBox(returnRayCollisionBoundingBox(cameraRayCollision), BLACK);
 
                 // DRAW DEBUG INFO
                 if (app.debug) {
@@ -125,32 +118,22 @@ int main() {
             EndMode3D();
             app.DrawCrosshair();
             DrawFPS(10,10);
+            DrawText(TextFormat("Coords: %.2f %.2f %.2f", cameraRayCollision.point.x, cameraRayCollision.point.y, cameraRayCollision.point.z), 10, 30, 20, LIME);
+            DrawText(TextFormat("Normal: %.2f %.2f %.2f", cameraRayCollision.normal.x, cameraRayCollision.normal.y, cameraRayCollision.normal.z), 10, 50, 20, LIME);
         EndDrawing();
 
+        CheckCollisionWithVoxels(cameraRay, app.voxelGrid);
 
         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-            Voxel *selectedVoxel = GetVoxel(cameraRayCollision.point.x, cameraRayCollision.point.y, cameraRayCollision.point.z);
-            if (selectedVoxel) {
+            if (Voxel *selectedVoxel = GetVoxel(cameraRayCollision.point.x, cameraRayCollision.point.y, cameraRayCollision.point.z)) {
                 selectedVoxel->color = BLUE;
                 selectedVoxel->position = cameraRayCollision.point;
-                selectedVoxel->boundingBox = BoundingBox {
-                    .min = {
-                        cameraRayCollision.point.x - CUBE_SIZE/2,
-                        cameraRayCollision.point.y - CUBE_SIZE/2,
-                        cameraRayCollision.point.z - CUBE_SIZE/2,
-                    },
-                    .max = {
-                        cameraRayCollision.point.x + CUBE_SIZE/2,
-                        cameraRayCollision.point.y + CUBE_SIZE/2,
-                        cameraRayCollision.point.z + CUBE_SIZE/2,
-                    },
-                };
+                selectedVoxel->boundingBox = returnRayCollisionBoundingBox(cameraRayCollision);
                 selectedVoxel->isActive = true;
             }
         }
 
         if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
-            std::cout << cameraRayCollision.point.x << " " << cameraRayCollision.point.y << " " << cameraRayCollision.point.z << std::endl;
         }
         if (IsKeyPressed(KEY_F11)) {
             MaximizeWindow();
