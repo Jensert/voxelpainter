@@ -12,9 +12,11 @@ typedef struct App {
     int windowWidth = 960;
     int windowHeight = 540;
 
-    Voxel voxelGrid[(int)GRID_SIZE*(int)GRID_SIZE*(int)GRID_SIZE];
-
     bool debug = true;
+    bool camera_enabled = true;
+    bool mouse_shown = false;
+
+    Voxel voxelGrid[(int)GRID_SIZE*(int)GRID_SIZE*(int)GRID_SIZE];
 
     void DrawCrosshair() const {
         DrawLine(this->windowWidth/2 - 5, this->windowHeight/2 - 5, this->windowWidth/2 + 5, this->windowHeight/2 + 5, BLACK );
@@ -61,7 +63,7 @@ int main() {
     HideCursor();
 
     Camera camera = { 0 };
-    camera.position = Vector3{0.0f, 2.0f, 1.0f};
+    camera.position = Vector3{GRID_SIZE, GRID_SIZE, GRID_SIZE}*CUBE_SIZE;
     camera.target = Vector3{0.0f, 0.0f, 0.0f};
     camera.up = Vector3{0.0f, 1.0f, 0.0f};
     camera.fovy = 45.0f;
@@ -84,8 +86,10 @@ int main() {
         cameraRay.position = camera.position;
         cameraRay.direction = cameraDirection;
         const RayCollision cameraRayCollision = CheckAllCollisions(cameraRay, app.voxelGrid);
-        UpdateCamera(&camera, cameraMode);
-        SetMousePosition(app.windowWidth/2, app.windowHeight/2);
+        if (app.camera_enabled) {
+            UpdateCamera(&camera, cameraMode);
+            SetMousePosition(app.windowWidth/2, app.windowHeight/2);
+        }
 
         BeginDrawing();
             ClearBackground(SKYBLUE);
@@ -124,7 +128,7 @@ int main() {
 
         CheckCollisionWithVoxels(cameraRay, app.voxelGrid);
 
-        if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && app.camera_enabled) {
             if (Voxel *selectedVoxel = GetVoxel(cameraRayCollision.point.x, cameraRayCollision.point.y, cameraRayCollision.point.z)) {
                 selectedVoxel->color = BLUE;
                 selectedVoxel->position = cameraRayCollision.point;
@@ -134,6 +138,15 @@ int main() {
         }
 
         if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) {
+        }
+        if (IsKeyPressed(KEY_LEFT_ALT)) {
+            app.camera_enabled = !app.camera_enabled;
+            app.mouse_shown = !app.mouse_shown;
+            if (app.camera_enabled) {
+                HideCursor();
+            } else {
+                ShowCursor();
+            }
         }
         if (IsKeyPressed(KEY_F11)) {
             MaximizeWindow();

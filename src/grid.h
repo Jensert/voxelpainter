@@ -11,13 +11,18 @@
 #include "raymath.h"
 
 constexpr float GRID_SIZE = 16.0f;
-constexpr float CUBE_SIZE = 0.1f;
+constexpr float CUBE_SIZE = 0.25f;
 
 struct Voxel {
     Vector3 position;
     Color color;
     BoundingBox boundingBox;
     bool isActive = false;  // Track whether voxel is used
+};
+
+enum DrawMode {
+    DRAWMODE_FPS = 1,
+    DRAWMODE_SELECT = 2,
 };
 
 inline void DrawGridBottom()
@@ -206,10 +211,13 @@ inline RayCollision CheckCollisionWithVoxels(
             closestCollision = collision;
         }
     }
+
+    closestCollision.point += (closestCollision.normal * CUBE_SIZE/2);
     closestCollision.point = Vector3{
         floorf(closestCollision.point.x / CUBE_SIZE) * CUBE_SIZE + CUBE_SIZE / 2,
         floorf(closestCollision.point.y / CUBE_SIZE) * CUBE_SIZE + CUBE_SIZE / 2,
         floorf(closestCollision.point.z / CUBE_SIZE) * CUBE_SIZE + CUBE_SIZE / 2};
+
     return closestCollision;
 }
 
